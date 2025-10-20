@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import ReactDOM from 'react-dom';
+// FIX: Updated the ReactDOM import to use 'react-dom/client' for React 18 compatibility.
+import ReactDOM from 'react-dom/client';
 import { BmiData } from '../types';
 import { WhatsappIcon } from './icons/WhatsappIcon';
 import WellnessProfileForm from './WellnessProfileForm';
@@ -166,7 +167,9 @@ const UserCard: React.FC<UserCardProps> = ({ data, onDelete, onUpdateStatus, onU
             : supabase.from('wellness_profiles').insert(dataToSave));
 
         if (error) {
-             if (error.code === '23505') { // Unique violation
+            if (error.message.includes('relation "public.wellness_profiles" does not exist')) {
+                alert("Error: La tabla 'wellness_profiles' no existe en la base de datos. Por favor, créala para poder guardar el perfil.");
+            } else if (error.code === '23505') { // Unique violation
                 alert("Hubo un error al guardar el perfil. Ya existe un perfil para este usuario. Esto puede deberse a un problema de permisos (RLS) que impide ver el perfil existente. Por favor, revisa la configuración de seguridad de tu tabla 'wellness_profiles'.");
             } else {
                 alert(`Hubo un error al guardar el perfil. Revisa la consola para más detalles y verifica la configuración de tu tabla 'wellness_profiles'.`);
@@ -176,7 +179,6 @@ const UserCard: React.FC<UserCardProps> = ({ data, onDelete, onUpdateStatus, onU
             setProfileModalOpen(false);
             fetchProfileData();
             if (!profileData) {
-                // FIX: Called onUpdateStatus from props instead of the undefined handleUpdateStatus.
                 onUpdateStatus(data.id, 'Evaluación Realizada');
             }
         }
@@ -207,7 +209,6 @@ const UserCard: React.FC<UserCardProps> = ({ data, onDelete, onUpdateStatus, onU
             setQuestionnaireModalOpen(false);
             fetchQuestionnaireData();
             if (!questionnaireData) {
-                // FIX: Called onUpdateStatus from props instead of the undefined handleUpdateStatus.
                 onUpdateStatus(data.id, 'Evaluación Realizada');
             }
         }
