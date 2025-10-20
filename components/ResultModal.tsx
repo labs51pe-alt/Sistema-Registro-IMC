@@ -1,5 +1,6 @@
 import React from 'react';
 import { BmiData } from '../types';
+import { WhatsappIcon } from './icons/WhatsappIcon';
 
 interface ResultModalProps {
     data: BmiData;
@@ -60,9 +61,10 @@ const ResultModal: React.FC<ResultModalProps> = ({ data, onClose }) => {
                 <div className="mt-8 flex flex-col gap-3">
                     <button
                         onClick={handleWhatsAppClick}
-                        className="w-full bg-gradient-to-r from-green-500 to-green-600 text-white font-bold py-4 px-8 rounded-lg hover:from-green-600 hover:to-green-700 transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300 text-lg"
+                        className="w-full bg-[#25D366] text-white font-bold py-4 px-6 rounded-lg hover:bg-[#128C7E] transition-all duration-300 transform hover:scale-105 focus:outline-none focus:ring-4 focus:ring-green-300 text-lg flex items-center justify-center gap-3 shadow-lg"
                     >
-                        ¡Quiero mi cambio AHORA!
+                        <WhatsappIcon />
+                        <span>¡Quiero mi cambio AHORA!</span>
                     </button>
                 </div>
             </div>

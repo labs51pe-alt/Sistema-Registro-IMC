@@ -373,9 +373,9 @@ const UserCard: React.FC<UserCardProps> = ({ data, onDelete, onUpdateStatus, onU
                     </div>
                     
                     <div className="flex justify-end items-center space-x-3 mt-4">
-                        <button onClick={handleWhatsAppClick} className="flex items-center text-sm text-green-600 hover:text-green-800 font-semibold p-2 rounded-lg hover:bg-green-50 transition-colors">
+                        <button onClick={handleWhatsAppClick} className="flex items-center text-sm bg-green-500 text-white font-semibold py-2 px-4 rounded-lg hover:bg-green-600 transition-colors shadow-sm transform hover:scale-105">
                             <WhatsappIcon />
-                            <span className="ml-1.5">Enviar Mensaje</span>
+                            <span className="ml-2">Enviar Mensaje</span>
                         </button>
                         <button onClick={handleDeleteClick} className="text-sm text-red-600 hover:text-red-800 font-semibold p-2 rounded-lg hover:bg-red-50 transition-colors">
                             Eliminar
