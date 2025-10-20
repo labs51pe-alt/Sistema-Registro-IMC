@@ -29,33 +29,72 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ onSuccess }) => {
         altura: '',
     });
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [serverError, setServerError] = useState<string | null>(null);
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+        if (errors[name]) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[name];
+                return newErrors;
+            });
+        }
     };
+
+    const validate = (): boolean => {
+        const newErrors: { [key: string]: string } = {};
+
+        if (!formData.nombre.trim()) newErrors.nombre = 'El nombre es obligatorio.';
+        
+        if (!formData.telefono.trim()) {
+            newErrors.telefono = 'El teléfono es obligatorio.';
+        } else if (!/^\d{7,}$/.test(formData.telefono.replace(/\s/g, ''))) {
+            newErrors.telefono = 'Introduce un número de teléfono válido.';
+        }
+
+        if (!formData.edad) {
+            newErrors.edad = 'La edad es obligatoria.';
+        } else if (isNaN(parseInt(formData.edad)) || parseInt(formData.edad) <= 0) {
+            newErrors.edad = 'Introduce una edad válida y positiva.';
+        }
+
+        if (!formData.peso) {
+            newErrors.peso = 'El peso es obligatorio.';
+        } else if (isNaN(parseFloat(formData.peso)) || parseFloat(formData.peso) <= 0) {
+            newErrors.peso = 'Introduce un peso válido y positivo.';
+        }
+
+        if (!formData.altura) {
+            newErrors.altura = 'La altura es obligatoria.';
+        } else if (isNaN(parseFloat(formData.altura)) || parseFloat(formData.altura) <= 0) {
+            newErrors.altura = 'Introduce una altura válida y positiva.';
+        }
+
+        setErrors(newErrors);
+        return Object.keys(newErrors).length === 0;
+    };
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!validate()) {
+            return;
+        }
+
         setIsLoading(true);
-        setError(null);
+        setServerError(null);
 
         const { nombre, telefono } = formData;
         const edad = parseInt(formData.edad);
         const peso = parseFloat(formData.peso);
         const altura = parseFloat(formData.altura);
 
-        if (isNaN(edad) || isNaN(peso) || isNaN(altura) || altura <= 0 || peso <= 0 || edad <= 0) {
-            setError('Por favor, introduce valores numéricos positivos y válidos para edad, peso y altura.');
-            setIsLoading(false);
-            return;
-        }
-
         const alturaM = altura / 100;
         const imc = parseFloat((peso / (alturaM * alturaM)).toFixed(2));
 
-        // Usamos la función local en lugar de la API de Gemini
         const categoria = getBmiCategory(imc);
 
         const resultData: BmiData = {
@@ -70,7 +109,6 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ onSuccess }) => {
         };
         
         try {
-            // Guardar en Supabase
             const { error: supabaseError } = await supabase
                 .from('registros_imc')
                 .insert([resultData]);
@@ -81,7 +119,6 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ onSuccess }) => {
             }
 
             onSuccess(resultData);
-            // Reiniciar el formulario
             setFormData({
                 nombre: '',
                 telefono: '',
@@ -92,7 +129,7 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ onSuccess }) => {
 
         } catch (err) {
             console.error(err);
-            setError('Hubo un error al guardar tu registro. Por favor, inténtalo de nuevo.');
+            setServerError('Hubo un error al guardar tu registro. Por favor, inténtalo de nuevo.');
         } finally {
             setIsLoading(false);
         }
@@ -100,87 +137,97 @@ const RegistrationForm: React.FC<RegistrationFormProps> = ({ onSuccess }) => {
     
     return (
         <div className="bg-white p-8 rounded-lg shadow-lg w-full max-w-md">
-            <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                        <UserIcon />
-                    </span>
-                    <input
-                        type="text"
-                        name="nombre"
-                        value={formData.nombre}
-                        onChange={handleChange}
-                        placeholder="Nombre completo"
-                        required
-                        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                </div>
-                <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                        <PhoneIcon />
-                    </span>
-                    <input
-                        type="tel"
-                        name="telefono"
-                        value={formData.telefono}
-                        onChange={handleChange}
-                        placeholder="Teléfono"
-                        required
-                        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                </div>
-                <div className="relative">
-                    <span className="absolute inset-y-0 left-0 flex items-center pl-3">
-                        <CalendarIcon />
-                    </span>
-                    <input
-                        type="number"
-                        name="edad"
-                        value={formData.edad}
-                        onChange={handleChange}
-                        placeholder="Edad"
-                        required
-                        min="1"
-                        inputMode="numeric"
-                        className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
-                    />
-                </div>
-                <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+                <div>
                     <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                            <UserIcon />
+                        </span>
                         <input
-                            type="number"
-                            name="peso"
-                            value={formData.peso}
+                            type="text"
+                            name="nombre"
+                            value={formData.nombre}
                             onChange={handleChange}
-                            placeholder="Peso (kg)"
-                            required
-                            step="0.1"
-                            min="1"
-                            inputMode="decimal"
-                            className="w-full pl-4 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                            placeholder="Nombre completo"
+                            className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.nombre ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500'}`}
                         />
                     </div>
+                    {errors.nombre && <p className="text-red-500 text-xs mt-1 ml-1">{errors.nombre}</p>}
+                </div>
+                <div>
                     <div className="relative">
-                         <input
-                            type="number"
-                            name="altura"
-                            value={formData.altura}
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                            <PhoneIcon />
+                        </span>
+                        <input
+                            type="tel"
+                            name="telefono"
+                            value={formData.telefono}
                             onChange={handleChange}
-                            placeholder="Altura (cm)"
-                            required
-                            min="1"
-                            inputMode="decimal"
-                            className="w-full pl-4 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"
+                            placeholder="Teléfono"
+                            className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.telefono ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500'}`}
                         />
+                    </div>
+                    {errors.telefono && <p className="text-red-500 text-xs mt-1 ml-1">{errors.telefono}</p>}
+                </div>
+                <div>
+                    <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3">
+                            <CalendarIcon />
+                        </span>
+                        <input
+                            type="number"
+                            name="edad"
+                            value={formData.edad}
+                            onChange={handleChange}
+                            placeholder="Edad"
+                            min="1"
+                            inputMode="numeric"
+                            className={`w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.edad ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500'}`}
+                        />
+                    </div>
+                    {errors.edad && <p className="text-red-500 text-xs mt-1 ml-1">{errors.edad}</p>}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <div className="relative">
+                            <input
+                                type="number"
+                                name="peso"
+                                value={formData.peso}
+                                onChange={handleChange}
+                                placeholder="Peso (kg)"
+                                step="0.1"
+                                min="1"
+                                inputMode="decimal"
+                                className={`w-full pl-4 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.peso ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500'}`}
+                            />
+                        </div>
+                        {errors.peso && <p className="text-red-500 text-xs mt-1 ml-1">{errors.peso}</p>}
+                    </div>
+                    <div>
+                         <div className="relative">
+                             <input
+                                type="number"
+                                name="altura"
+                                value={formData.altura}
+                                onChange={handleChange}
+                                placeholder="Altura (cm)"
+                                min="1"
+                                inputMode="decimal"
+                                className={`w-full pl-4 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.altura ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500'}`}
+                            />
+                        </div>
+                        {errors.altura && <p className="text-red-500 text-xs mt-1 ml-1">{errors.altura}</p>}
                     </div>
                 </div>
 
-                {error && <p className="text-red-500 text-sm text-center">{error}</p>}
+                {serverError && <p className="text-red-500 text-sm text-center">{serverError}</p>}
 
                 <button
                     type="submit"
                     disabled={isLoading}
-                    className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors duration-300 flex items-center justify-center disabled:bg-gray-400"
+                    className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors duration-300 flex items-center justify-center disabled:bg-gray-400 mt-4"
                 >
                     {isLoading ? <LoadingSpinner /> : (
                         <>

@@ -29,7 +29,8 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onClose, onSuccess }) => {
         categoria: '',
     });
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState<string | null>(null);
+    const [serverError, setServerError] = useState<string | null>(null);
+    const [errors, setErrors] = useState<{ [key: string]: string }>({});
     const [calculationDone, setCalculationDone] = useState(false);
     const [showRegistrationFields, setShowRegistrationFields] = useState(false);
 
@@ -37,25 +38,67 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onClose, onSuccess }) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
 
+        if (errors[name]) {
+            setErrors(prev => {
+                const newErrors = { ...prev };
+                delete newErrors[name];
+                return newErrors;
+            });
+        }
+
         if (['peso', 'altura', 'edad'].includes(name)) {
             setCalculationDone(false);
             setShowRegistrationFields(false);
-            setError(null);
+            setServerError(null);
             setFormData(prev => ({ ...prev, [name]: value, imc: '', categoria: '' }));
         }
     };
     
-    const handleCalculate = () => {
-        setError(null);
-        const peso = parseFloat(formData.peso);
-        const altura = parseFloat(formData.altura);
-        const edad = parseInt(formData.edad);
+    const validate = (fields: ('calculation' | 'registration')[]): boolean => {
+        const newErrors: { [key: string]: string } = {};
 
-        if (isNaN(edad) || isNaN(peso) || isNaN(altura) || altura <= 0 || peso <= 0 || edad <= 0) {
-            setError('Por favor, introduce valores numéricos positivos para edad, peso y altura.');
-            return;
+        if (fields.includes('calculation')) {
+            if (!formData.edad) {
+                newErrors.edad = 'La edad es obligatoria.';
+            } else if (isNaN(parseInt(formData.edad)) || parseInt(formData.edad) <= 0) {
+                newErrors.edad = 'Introduce una edad válida y positiva.';
+            }
+
+            if (!formData.peso) {
+                newErrors.peso = 'El peso es obligatorio.';
+            } else if (isNaN(parseFloat(formData.peso)) || parseFloat(formData.peso) <= 0) {
+                newErrors.peso = 'Introduce un peso válido y positivo.';
+            }
+
+            if (!formData.altura) {
+                newErrors.altura = 'La altura es obligatoria.';
+            } else if (isNaN(parseFloat(formData.altura)) || parseFloat(formData.altura) <= 0) {
+                newErrors.altura = 'Introduce una altura válida y positiva.';
+            }
         }
 
+        if (fields.includes('registration')) {
+            if (!formData.nombre.trim()) newErrors.nombre = 'El nombre es obligatorio.';
+            
+            if (!formData.telefono.trim()) {
+                newErrors.telefono = 'El teléfono es obligatorio.';
+            } else if (!/^\d{7,}$/.test(formData.telefono.replace(/\s/g, ''))) {
+                newErrors.telefono = 'Introduce un número de teléfono válido.';
+            }
+        }
+        
+        setErrors(prev => ({...prev, ...newErrors}));
+        return Object.keys(newErrors).length === 0;
+    }
+
+
+    const handleCalculate = () => {
+        setServerError(null);
+        if (!validate(['calculation'])) return;
+
+        const peso = parseFloat(formData.peso);
+        const altura = parseFloat(formData.altura);
+        
         const alturaM = altura / 100;
         const calculatedImc = parseFloat((peso / (alturaM * alturaM)).toFixed(2));
         const calculatedCategory = getBmiCategory(calculatedImc);
@@ -70,30 +113,19 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onClose, onSuccess }) => {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!validate(['calculation', 'registration'])) return;
+
         setIsLoading(true);
-        setError(null);
+        setServerError(null);
 
         const { nombre, telefono, categoria } = formData;
         const edad = parseInt(formData.edad);
         const peso = parseFloat(formData.peso);
         const altura = parseFloat(formData.altura);
         const imc = parseFloat(formData.imc);
-
-        if (!nombre || !telefono || isNaN(edad) || isNaN(peso) || isNaN(altura) || isNaN(imc)) {
-            setError('Por favor, completa todos los campos para guardar el registro.');
-            setIsLoading(false);
-            return;
-        }
-
+        
         const resultData: Omit<BmiData, 'id' | 'created_at'> = {
-            nombre,
-            telefono,
-            edad,
-            peso,
-            altura,
-            imc,
-            categoria,
-            estado: 'Nuevo',
+            nombre, telefono, edad, peso, altura, imc, categoria, estado: 'Nuevo',
         };
         
         try {
@@ -105,18 +137,15 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onClose, onSuccess }) => {
                 console.error('Supabase error:', supabaseError);
                 throw new Error('No se pudo guardar el registro en la base de datos.');
             }
-
             onSuccess();
 
         } catch (err) {
             console.error(err);
-            setError('Hubo un error al guardar el registro. Por favor, inténtalo de nuevo.');
+            setServerError('Hubo un error al guardar el registro. Por favor, inténtalo de nuevo.');
         } finally {
             setIsLoading(false);
         }
     };
-
-    const isCalculationReady = formData.peso && formData.altura && formData.edad;
     
     return (
         <div className="fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity duration-300" onClick={onClose}>
@@ -134,16 +163,19 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onClose, onSuccess }) => {
                     <h3 className="text-lg font-semibold text-gray-700">1. Datos para Cálculo</h3>
                      <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">Edad</label>
-                        <input type="number" name="edad" value={formData.edad} onChange={handleChange} placeholder="Ej: 30" min="1" inputMode="numeric" className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
+                        <input type="number" name="edad" value={formData.edad} onChange={handleChange} placeholder="Ej: 30" min="1" inputMode="numeric" className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.edad ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500'}`} />
+                        {errors.edad && <p className="text-red-500 text-xs mt-1">{errors.edad}</p>}
                     </div>
                     <div className="grid grid-cols-2 gap-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Peso (kg)</label>
-                            <input type="number" name="peso" value={formData.peso} onChange={handleChange} placeholder="Ej: 70.5" step="0.1" min="1" inputMode="decimal" className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
+                            <input type="number" name="peso" value={formData.peso} onChange={handleChange} placeholder="Ej: 70.5" step="0.1" min="1" inputMode="decimal" className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.peso ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500'}`} />
+                            {errors.peso && <p className="text-red-500 text-xs mt-1">{errors.peso}</p>}
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">Altura (cm)</label>
-                            <input type="number" name="altura" value={formData.altura} onChange={handleChange} placeholder="Ej: 165" min="1" inputMode="decimal" className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
+                            <input type="number" name="altura" value={formData.altura} onChange={handleChange} placeholder="Ej: 165" min="1" inputMode="decimal" className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.altura ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500'}`} />
+                            {errors.altura && <p className="text-red-500 text-xs mt-1">{errors.altura}</p>}
                         </div>
                     </div>
                     
@@ -151,7 +183,6 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onClose, onSuccess }) => {
                          <button
                             type="button"
                             onClick={handleCalculate}
-                            disabled={!isCalculationReady}
                             className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors duration-300 flex items-center justify-center disabled:bg-gray-400 disabled:cursor-not-allowed"
                         >
                             Calcular IMC
@@ -181,15 +212,17 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onClose, onSuccess }) => {
                                     <h3 className="text-lg font-semibold text-gray-700">2. Registrar Datos</h3>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
-                                        <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Ej: Juan Pérez" required className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
+                                        <input type="text" name="nombre" value={formData.nombre} onChange={handleChange} placeholder="Ej: Juan Pérez" className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.nombre ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500'}`} />
+                                        {errors.nombre && <p className="text-red-500 text-xs mt-1">{errors.nombre}</p>}
                                     </div>
                                     <div>
                                         <label className="block text-sm font-medium text-gray-700 mb-1">Teléfono</label>
-                                        <input type="tel" name="telefono" value={formData.telefono} onChange={handleChange} placeholder="Ej: 51987654321" required className="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500" />
+                                        <input type="tel" name="telefono" value={formData.telefono} onChange={handleChange} placeholder="Ej: 51987654321" className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 ${errors.telefono ? 'border-red-500 focus:ring-red-500' : 'focus:ring-green-500'}`} />
+                                        {errors.telefono && <p className="text-red-500 text-xs mt-1">{errors.telefono}</p>}
                                     </div>
                                      <button
                                         type="submit"
-                                        disabled={isLoading || !formData.nombre || !formData.telefono}
+                                        disabled={isLoading}
                                         className="w-full bg-green-600 text-white py-3 rounded-lg font-semibold hover:bg-green-700 transition-colors duration-300 flex items-center justify-center disabled:bg-gray-400"
                                     >
                                         {isLoading ? <LoadingSpinner /> : 'Guardar Registro'}
@@ -199,7 +232,7 @@ const AddUserForm: React.FC<AddUserFormProps> = ({ onClose, onSuccess }) => {
                         </div>
                     )}
                     
-                    {error && <p className="text-red-500 text-sm text-center mt-4">{error}</p>}
+                    {serverError && <p className="text-red-500 text-sm text-center mt-4">{serverError}</p>}
                 </form>
             </div>
             <style>{`
