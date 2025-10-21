@@ -196,6 +196,7 @@ const UserCard: React.FC<UserCardProps> = ({ data, onDelete, onUpdateStatus, onU
             ...formData,
             user_id: data.id,
             is_complete: isFinal,
+            readiness_scale: formData.readiness_scale ? parseInt(String(formData.readiness_scale), 10) || 0 : 0,
             daily_food_spending: formData.daily_food_spending ? parseFloat(String(formData.daily_food_spending)) || null : null,
             daily_coffee_spending: formData.daily_coffee_spending ? parseFloat(String(formData.daily_coffee_spending)) || null : null,
             weekly_alcohol_spending: formData.weekly_alcohol_spending ? parseFloat(String(formData.weekly_alcohol_spending)) || null : null,
