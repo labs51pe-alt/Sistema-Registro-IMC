@@ -162,8 +162,8 @@ const UserCard: React.FC<UserCardProps> = ({ data, onDelete, onUpdateStatus, onU
             ...formData,
             user_id: data.id,
             is_complete: isFinal,
-            daily_food_spending: formData.daily_food_spending ? parseFloat(formData.daily_food_spending) || null : null,
-            alcohol_per_week: formData.alcohol_per_week ? parseFloat(formData.alcohol_per_week) || null : null,
+            daily_food_spending: formData.daily_food_spending ? parseFloat(String(formData.daily_food_spending)) || null : null,
+            alcohol_per_week: formData.alcohol_per_week ? parseFloat(String(formData.alcohol_per_week)) || null : null,
         };
 
         const { error } = await (profileData
@@ -196,10 +196,10 @@ const UserCard: React.FC<UserCardProps> = ({ data, onDelete, onUpdateStatus, onU
             ...formData,
             user_id: data.id,
             is_complete: isFinal,
-            daily_food_spending: formData.daily_food_spending ? parseFloat(formData.daily_food_spending) || null : null,
-            daily_coffee_spending: formData.daily_coffee_spending ? parseFloat(formData.daily_coffee_spending) || null : null,
-            weekly_alcohol_spending: formData.weekly_alcohol_spending ? parseFloat(formData.weekly_alcohol_spending) || null : null,
-            weekly_takeout_spending: formData.weekly_takeout_spending ? parseFloat(formData.weekly_takeout_spending) || null : null,
+            daily_food_spending: formData.daily_food_spending ? parseFloat(String(formData.daily_food_spending)) || null : null,
+            daily_coffee_spending: formData.daily_coffee_spending ? parseFloat(String(formData.daily_coffee_spending)) || null : null,
+            weekly_alcohol_spending: formData.weekly_alcohol_spending ? parseFloat(String(formData.weekly_alcohol_spending)) || null : null,
+            weekly_takeout_spending: formData.weekly_takeout_spending ? parseFloat(String(formData.weekly_takeout_spending)) || null : null,
         };
 
         const { error } = await (questionnaireData
